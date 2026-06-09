@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MATHOPIA - Retro Educational Android Math RPG</title>
+    <style>
+        /* --- RETRO PIXEL ART FONTS --- */
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
+
+        :root {
+            --bg-dark: #140f0d;
+            --bg-panel: #2d231e;
+            --bg-panel-light: #42352f;
+            --gold: #e5bc4b;
+            --gold-glow: rgba(229, 188, 75, 0.4);
+            --cream: #f4eccd;
+            --pixel-border: 4px solid #000;
+            --red: #ff5252;
+            --red-glow: rgba(255, 82, 82, 0.4);
+            --blue: #40c4ff;
+        }
+
+        /* --- STYLING & PIXEL RENDERING RESET --- */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            -webkit-font-smoothing: none;
+            -moz-osx-font-smoothing: none;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--cream);
+            font-family: 'VT323', monospace;
+            font-size: 1.6rem;
+            line-height: 1.4;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        h1, h2, h3, h4, .pixel-btn, .start-prompt, .badge {
+            font-family: 'Press Start 2P', cursive;
+            font-weight: normal;
+        }
+
+        /* --- RETRO CRT SCANLINES OVERLAY --- */
+        body::after {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 99999;
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+        }
+
+        /* --- ATMOSPHERIC CANVAS POSITIONING --- */
+        #particleCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        header, .content-wrapper, footer {
+            position: relative;
+            z-index: 10;
+        }
+
+        /* --- CINEMATIC VIGNETTE SHADOWS --- */
+        .vignette {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            box-shadow: inset 0 0 120px rgba(0,0,0,0.85);
+            z-index: 9998;
+            pointer-events: none;
+        }
+
+        /* --- SPLASH OVERLAY TO BYPASS BROWSER AUDIO BLOCKING --- */
+        #splashOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000 url('MenuBG.png') no-repeat center center/cover;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: opacity 0.5s ease, visibility 0.5s;
+        }
+
+        .start-prompt {
+            color: var(--gold);
+            font-size: 1.8rem;
+            text-shadow: 4px 4px 0px #000;
+            text-align: center;
+            animation: blink 1.2s infinite steps(2);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px 40px;
+            border: 4px dashed var(--gold);
+            box-shadow: 0 0 20px var(--gold-glow);
+        }
+
+        /* --- LANDING HERO SECTION --- */
+        header {
+            position: relative;
+            min-height: 95vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            text-align: center;
+            padding: 60px 20px;
+            border-bottom: var(--pixel-border);
+            background: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.7)), url('MenuBG.png') no-repeat center center/cover;
+        }
+
+        .game-logo {
+            margin-top: 40px;
+            z-index: 2;
+        }
+
+        .game-logo h1 {
+            font-size: 4rem;
+            color: var(--gold);
+            text-shadow: 8px 8px 0px #000;
+            letter-spacing: 4px;
+            margin-bottom: 16px;
+            animation: floatHero 3s infinite ease-in-out;
+        }
+
+        .game-logo p {
+            font-size: 1.9rem;
+            text-shadow: 2px 2px 0px #000;
+            color: #fff;
+            max-width: 650px;
+            background: rgba(19, 15, 13, 0.85);
+            padding: 10px 20px;
+            border: 4px solid var(--bg-panel-light);
+            box-shadow: 0 8px 0 rgba(0,0,0,0.4);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+        }
+
+        /* --- CTA DOWNLOAD BUTTON WITH PULSE GLOW --- */
+        .download-zone {
+            margin-bottom: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            z-index: 2;
+        }
+
+        .pixel-btn {
+            display: inline-block;
+            background-color: #4caf50;
+            color: #fff;
+            border: var(--pixel-border);
+            padding: 24px 48px;
+            font-size: 1.4rem;
+            text-decoration: none;
+            box-shadow: 
+                inset -6px -6px 0px #2e7d32,
+                inset 6px 6px 0px #a1887f,
+                0 8px 0 #1b5e20, 
+                0 16px 0 #000;
+            cursor: pointer;
+            transform: translateY(0px);
+            animation: pulseGreen 2s infinite ease-in-out;
+        }
+
+        .pixel-btn:hover {
+            background-color: #66bb6a;
+            animation-play-state: paused;
+        }
+
+        .pixel-btn:active {
+            transform: translateY(8px);
+            box-shadow: 
+                inset -6px -6px 0px #2e7d32,
+                inset 6px 6px 0px #a1887f,
+                0 0px 0 #1b5e20, 
+                0 8px 0 #000;
+        }
+
+        /* --- MAIN CONTENT LAYOUT WRAPPER --- */
+        .content-wrapper {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 50px;
+        }
+
+        /* --- TAVERN ZONE CORE --- */
+        .tavern-zone {
+            border: var(--pixel-border);
+            padding: 40px;
+            box-shadow: 0 16px 0 rgba(0,0,0,0.6);
+            background: linear-gradient(rgba(25, 20, 18, 0.8), rgba(25, 20, 18, 0.95)), url('TavernBG.png') no-repeat center center/cover;
+        }
+
+        .tavern-showcase h2, .section-title {
+            color: var(--gold);
+            font-size: 1.8rem;
+            margin-bottom: 25px;
+            text-shadow: 3px 3px 0px #000;
+            border-bottom: 4px dashed var(--gold);
+            padding-bottom: 12px;
+        }
+
+        .tavern-showcase p {
+            font-size: 1.8rem;
+            color: #f7f1db;
+            text-shadow: 2px 2px 0px #000;
+            margin-bottom: 30px;
+            background: rgba(0,0,0,0.6);
+            padding: 20px;
+            border-left: 6px solid var(--gold);
+            text-align: justify;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+        }
+
+        /* --- CHARACTER GRID SELECTION --- */
+        .roster-title {
+            text-align: center;
+            margin-bottom: 35px;
+            font-size: 2rem;
+            color: var(--cream);
+            text-shadow: 4px 4px 0 #000;
+        }
+
+        .character-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 24px;
+        }
+
+        .char-card {
+            background-color: rgba(45, 35, 30, 0.95);
+            border: 4px solid #000;
+            padding: 25px 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transform: translateY(0);
+            transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+            box-shadow: 0 8px 0 #000;
+            flex: 1 1 calc(33.333% - 24px);
+            min-width: 260px;
+            max-width: 340px;
+        }
+
+        .char-card:hover {
+            transform: translateY(-10px);
+            border-color: var(--gold);
+            background-color: rgba(78, 63, 56, 0.98);
+            box-shadow: 0 18px 0 rgba(229, 188, 75, 0.3), 0 18px 0 #000;
+        }
+
+        .char-sprite {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+            margin-bottom: 16px;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            transition: transform 0.2s ease;
+        }
+
+        .char-card:hover .char-sprite {
+            transform: scale(1.15) rotate(3deg);
+        }
+
+        .char-card h3 {
+            font-size: 1.1rem;
+            color: var(--gold);
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-align: center;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        .char-card p {
+            font-size: 1.3rem;
+            color: #d1c4b2;
+            line-height: 1.3;
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border: 2px dashed rgba(255,255,255,0.1);
+            flex-grow: 1;
+            text-align: center;
+        }
+
+        /* --- HIGHLY ACCENTED & DYNAMIC RETRO GAME MODES GRID --- */
+        .dual-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        .info-panel {
+            background-color: var(--bg-panel);
+            border: var(--pixel-border);
+            padding: 30px;
+            box-shadow: 0 10px 0 #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28), box-shadow 0.2s ease, background-color 0.2s ease;
+            cursor: pointer;
+        }
+
+        .info-panel::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 8px;
+            background: var(--gold);
+            z-index: 3;
+        }
+        .info-panel.survival-card::before {
+            background: var(--red);
+        }
+
+        .info-panel::after {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, transparent 60%, rgba(0,0,0,0.4));
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 2;
+        }
+        .info-panel:hover::after {
+            opacity: 1;
+        }
+
+        .info-panel:hover {
+            transform: translateY(-8px);
+            background-color: var(--bg-panel-light);
+            box-shadow: 0 15px 0 #000, 0 15px 30px var(--gold-glow);
+        }
+        .info-panel.survival-card:hover {
+            box-shadow: 0 15px 0 #000, 0 15px 30px var(--red-glow);
+        }
+
+        .info-panel h3 {
+            color: #fff;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            margin-top: 5px;
+            text-shadow: 2px 2px 0 #000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+            z-index: 4;
+        }
+
+        .info-panel .mode-lead-text {
+            font-size: 1.5rem;
+            color: #bcaaa4;
+            margin-bottom: 15px;
+            border-bottom: 2px dashed rgba(255, 255, 255, 0.1);
+            padding-bottom: 12px;
+            position: relative;
+            z-index: 4;
+        }
+
+        .info-panel > p {
+            text-align: justify;
+        }
+
+        .badge {
+            font-size: 0.7rem;
+            padding: 4px 8px;
+            background: var(--gold);
+            color: #000;
+        }
+        .badge.red { background: var(--red); color: #fff; }
+
+        .info-panel ul {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex-grow: 1;
+            position: relative;
+            z-index: 4;
+        }
+
+        .info-panel li {
+            font-size: 1.4rem;
+            padding-left: 20px;
+            position: relative;
+            text-align: justify;
+            line-height: 1.3;
+            transition: transform 0.15s ease;
+        }
+
+        .info-panel:hover li {
+            transform: translateX(4px);
+        }
+
+        .info-panel li::before {
+            content: "▶";
+            position: absolute;
+            left: 0;
+            color: var(--gold);
+            font-size: 1rem;
+        }
+        .info-panel.survival-card li::before {
+            color: var(--red);
+        }
+
+        /* --- MATHEMATICS CURRICULUM GRID --- */
+        .math-matrix {
+            background-color: #1a1412;
+            border: var(--pixel-border);
+            padding: 30px;
+            box-shadow: 0 10px 0 #000;
+        }
+
+        .math-matrix > p {
+            text-align: justify;
+        }
+
+        .matrix-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 25px;
+        }
+
+        .difficulty-card {
+            background: rgba(0, 0, 0, 0.5);
+            border: 4px solid var(--bg-panel-light);
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .difficulty-card .difficulty-heading {
+            font-size: 0.75rem;
+            margin-bottom: 6px;
+            letter-spacing: 1px;
+        }
+        .diff-basic { color: #a8ffb2; }
+        .diff-advanced { color: #ffb2ff; }
+
+        .difficulty-card h4 {
+            font-size: 1.2rem;
+            margin-bottom: 12px;
+            text-shadow: 2px 2px 0 #000;
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+            padding-bottom: 8px;
+            color: #fff;
+        }
+
+        .difficulty-card > p {
+            font-size: 1.4rem;
+            color: #bcaaa4;
+            margin-bottom: 20px;
+            line-height: 1.3;
+            text-align: justify;
+        }
+
+        .curriculum-list {
+            list-style: none;
+        }
+
+        .curriculum-item {
+            font-size: 1.4rem;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 15px;
+        }
+
+        .curriculum-item:last-child {
+            border-bottom: none;
+        }
+
+        .curriculum-item .area-title {
+            color: var(--gold);
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .curriculum-item .area-desc {
+            color: #fff;
+            text-align: right;
+            font-style: italic;
+        }
+
+        .glitch-text p {
+            text-align: justify;
+        }
+
+        /* --- FOOTER --- */
+        footer {
+            background-color: #0b0807;
+            text-align: center;
+            padding: 50px 20px;
+            margin-top: 80px;
+            border-top: var(--pixel-border);
+            font-size: 1.3rem;
+            color: #705e55;
+            position: relative;
+        }
+
+        /* --- ENGINE KEYFRAMES --- */
+        @keyframes floatHero {
+            0%, 100% { transform: translateY(0); text-shadow: 8px 8px 0px #000; }
+            50% { transform: translateY(-12px); text-shadow: 8px 20px 0px rgba(0,0,0,0.5); }
+        }
+
+        @keyframes pulseGreen {
+            0%, 100% { box-shadow: inset -6px -6px 0px #2e7d32, inset 6px 6px 0px #a1887f, 0 8px 0 #1b5e20, 0 16px 0 #000; }
+            50% { box-shadow: inset -6px -6px 0px #2e7d32, inset 6px 6px 0px #a1887f, 0 8px 25px rgba(76, 175, 80, 0.6), 0 16px 0 #000; }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        @media (max-width: 900px) {
+            .char-card {
+                flex: 1 1 calc(50% - 24px);
+            }
+        }
+
+        @media (max-width: 600px) {
+            .game-logo h1 { font-size: 2.2rem; }
+            .game-logo p { font-size: 1.3rem; }
+            body { font-size: 1.4rem; }
+            .start-prompt { font-size: 1.2rem; }
+            .char-card {
+                flex: 1 1 100%;
+                max-width: 100%;
+            }
+            .curriculum-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
+            .curriculum-item .area-desc {
+                text-align: left;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- RETRO CANVAS PARTICLE MOTOR -->
+    <canvas id="particleCanvas"></canvas>
+
+    <!-- CINEMATIC GRID SHADOWS -->
+    <div class="vignette"></div>
+
+    <!-- RETRO GAME START OVERLAY -->
+    <div id="splashOverlay">
+        <div class="start-prompt">CLICK TO START GAME</div>
+    </div>
+
+    <!-- AUDIO DRIVERS -->
+    <audio id="bgMusic" loop>
+        <source src="Menu.ogg" type="audio/ogg">
+    </audio>
+    <audio id="clickSound">
+        <source src="Click.ogg" type="audio/ogg">
+    </audio>
+
+    <!-- LANDING HERO PANEL -->
+    <header>
+        <div class="game-logo">
+            <h1>MATHOPIA</h1>
+            <p>AN EPIC RPG WORLD WHERE NUMBERS FORGE LEGENDS</p>
+        </div>
+
+        <div class="download-zone">
+            <!-- TARGETS YOUR LOCAL APK FILE FILENAME EXACTLY -->
+            <a href="mathopia.apk" class="pixel-btn play-click" download>DOWNLOAD APK</a>
+            <span style="font-size: 1.2rem; color: #bcaaa4; text-shadow: 2px 2px 0 #000; font-family: 'Press Start 2P'; margin-top:10px;">FREE DOWNLOAD</span>
+        </div>
+        <div></div> 
+    </header>
+
+    <!-- CONTAINER CONTENT -->
+    <div class="content-wrapper">
+
+        <!-- LORE & HERO RASTER GRID -->
+        <section class="tavern-zone">
+            
+            <div class="tavern-showcase">
+                <h2>REAL-TIME COMBAT OVERVIEW</h2>
+                <p>
+                    Fight monsters in real-time by solving math challenges under pressure. Correct answers allow you to strike enemies down. Mistakes mean taking damage as monsters hit you back instantly. Every turn gives you exactly 22 seconds to choose your answer and keep your hero alive.
+                </p>
+            </div>
+
+            <h2 class="roster-title">CHOOSE YOUR HERO</h2>
+            
+            <div class="character-grid">
+                
+                <!-- Hero 1 -->
+                <div class="char-card play-click">
+                    <div>
+                        <img src="knight.png" alt="Knight Sprite" class="char-sprite">
+                        <h3>Knight</h3>
+                    </div>
+                    <p>Features 30 total HP. Shields you from penalties by completely blocking the damage of your first wrong answer once during a fight.</p>
+                </div>
+
+                <!-- Hero 2 -->
+                <div class="char-card play-click">
+                    <div>
+                        <img src="wizard.png" alt="Wizard Sprite" class="char-sprite">
+                        <h3>Wizard</h3>
+                    </div>
+                    <p>Reduces choice anxiety by limiting multiple choice prompts to just 2 answers instead of 3. Deals double damage with every single correct reply.</p>
+                </div>
+
+                <!-- Hero 3 -->
+                <div class="char-card play-click">
+                    <div>
+                        <img src="rogue.png" alt="Rogue Sprite" class="char-sprite">
+                        <h3>Rogue</h3>
+                    </div>
+                    <p>Relies on chance when math skills fall short. Flips a coin on wrong selections to give you a solid 50% probability to dodge damage entirely.</p>
+                </div>
+
+                <!-- Hero 4 -->
+                <div class="char-card play-click">
+                    <div>
+                        <img src="noble.png" alt="Noble Sprite" class="char-sprite">
+                        <h3>Noble</h3>
+                    </div>
+                    <p>Provides a buffer during tight encounters. Gives you one free retry per battle where an incorrect answer simply generates a brand new equation instead of hurting you.</p>
+                </div>
+
+                <!-- Hero 5 -->
+                <div class="char-card play-click">
+                    <div>
+                        <img src="demon.png" alt="Demon Sprite" class="char-sprite">
+                        <h3>Demon</h3>
+                    </div>
+                    <p>Functions as a glass cannon with only 15 HP. Deals rapid damage by striking the current enemy twice on every correct answer.</p>
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- BALANCED, INTERACTIVE & ACCENTED GAME MODES SECTION -->
+        <div class="dual-grid">
+            
+            <!-- STORY MODE CARD -->
+            <div class="info-panel play-click">
+                <div>
+                    <h3><span class="badge">CAMPAIGN</span> STORY MODE</h3>
+                    <p class="mode-lead-text">Conquer progressive stages through an immersive arithmetic adventure narrative.</p>
+                </div>
+                <ul>
+                    <li>Fight through 6 distinct area biomes</li>
+                    <li>Survive 10 progressive combat stages per zone</li>
+                    <li>Enjoy background world flavor text based on your location</li>
+                    <li>Defeat the final Dragon boss waiting at the journey end</li>
+                </ul>
+            </div>
+
+            <!-- SURVIVAL MODE CARD -->
+            <div class="info-panel survival-card play-click">
+                <div>
+                    <h3><span class="badge red">ENDLESS</span> SURVIVAL MODE</h3>
+                    <p class="mode-lead-text">Face scaling equations until your absolute maximum health pool empties completely.</p>
+                </div>
+                <ul>
+                    <li>Hold your ground against infinite waves of scaling monster variants</li>
+                    <li>String correct answers together to trigger a plus 1 HP healing pop up</li>
+                    <li>Manage unexpected visual interference elements that disrupt choice selections</li>
+                </ul>
+            </div>
+
+        </div>
+
+        <!-- MATHEMATICAL CURRICULUM MATRIX -->
+        <section class="math-matrix">
+            <h3 class="section-title">THE CALCULATION CURRICULUM</h3>
+            <p style="font-size:1.6rem; margin-bottom:20px;">MATHOPIA balances arithmetic equations with academic problems depending entirely on your chosen game settings.</p>
+            
+            <div class="matrix-container">
+                
+                <!-- Basic Difficulty Side -->
+                <div class="difficulty-card">
+                    <div class="difficulty-heading diff-basic">BASIC DIFFICULTY</div>
+                    <h4>ARITHMETIC OPERATIONS</h4>
+                    <p>Addition, subtraction, multiplication, and division &mdash; themed around the world you are exploring. The operation focus shifts as you go deeper.</p>
+                    <ul class="curriculum-list">
+                        <li class="curriculum-item">
+                            <span class="area-title">Meadow Area</span>
+                            <span class="area-desc">Addition-focused encounters</span>
+                        </li>
+                        <li class="curriculum-item">
+                            <span class="area-title">Forest Area</span>
+                            <span class="area-desc">Multiplication and subtraction</span>
+                        </li>
+                        <li class="curriculum-item">
+                            <span class="area-title">Dungeon Area</span>
+                            <span class="area-desc">Division as primary operation</span>
+                        </li>
+                        <li class="curriculum-item">
+                            <span class="area-title">Dragon Lair</span>
+                            <span class="area-desc">All operations, fully randomized</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Advanced Difficulty Side -->
+                <div class="difficulty-card">
+                    <div class="difficulty-heading diff-advanced">ADVANCED DIFFICULTY</div>
+                    <h4>UNIVERSITY MATHEMATICS</h4>
+                    <p>Replaces arithmetic entirely with higher-level problems. Built for students who need to train under genuine pressure.</p>
+                    <ul class="curriculum-list">
+                        <li class="curriculum-item">
+                            <span class="area-title">Calculus</span>
+                            <span class="area-desc">Derivatives and integrals</span>
+                        </li>
+                        <li class="curriculum-item">
+                            <span class="area-title">Linear Algebra</span>
+                            <span class="area-desc">Matrix determinants</span>
+                        </li>
+                        <li class="curriculum-item">
+                            <span class="area-title">Diff. Equations</span>
+                            <span class="area-desc">Complex systems problems</span>
+                        </li>
+                        <li class="curriculum-item">
+                            <span class="area-title">Discrete Math</span>
+                            <span class="area-desc">Fibonacci sequences, combinations</span>
+                        </li>
+                    </ul>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- SURVIVAL GLITCH EVENTS MODIFIERS -->
+        <section class="info-panel glitch-text" style="background:#0a0706;">
+            <h3 style="color:var(--red);"><span class="badge red">ANOMALIES</span> SURVIVAL GLITCH EVENTS</h3>
+            <p style="font-size:1.6rem; margin-bottom:20px; color:#d1c4b2;">Survival mode triggers intentional screen corruption the longer you survive to break your timing and split your focus.</p>
+            
+            <div class="dual-grid" style="font-size:1.4rem;">
+                <div>
+                    <p style="margin-bottom:8px;"><strong style="color:var(--gold)">• Reversed Controls:</strong> Interface action buttons swap position mappings instantly</p>
+                    <p style="margin-bottom:8px;"><strong style="color:var(--gold)">• Flickering Inputs:</strong> Interactive choice buttons flash on and off during choices</p>
+                    <p style="margin-bottom:8px;"><strong style="color:var(--gold)">• Fake Clones:</strong> Extra duplicate choice options load to deceive your pathing</p>
+                </div>
+                <div>
+                    <p style="margin-bottom:8px;"><strong style="color:var(--gold)">• UI Corruption:</strong> Heavy visual distortion waves warp math text boxes directly</p>
+                    <p style="margin-bottom:8px;"><strong style="color:var(--gold)">• System Errors:</strong> Mock warning notifications pop over buttons to block inputs</p>
+                    <p style="margin-bottom:8px;"><strong style="color:var(--gold)">• Tougher Enemies:</strong> Fight Armored Goblins Withered Skeletons and Red Slimes</p>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <footer>
+        <p>&copy; 2026 MATHOPIA Studio. Powered by education calculation and pixel art.</p>
+    </footer>
+
+    <!-- INTERACTIVE AUDIO & FIXED PARTICLE ENGINE SYSTEM -->
+    <script>
+        const bgMusic = document.getElementById('bgMusic');
+        const clickSound = document.getElementById('clickSound');
+        const splashOverlay = document.getElementById('splashOverlay');
+        const clickables = document.querySelectorAll('.play-click');
+
+        // AUDIO TRIGGER LOGIC
+        clickables.forEach(element => {
+            element.addEventListener('click', () => {
+                clickSound.currentTime = 0; 
+                clickSound.play().catch(e => console.log("Audio file blocked."));
+            });
+        });
+
+        splashOverlay.addEventListener('click', () => {
+            clickSound.play();
+            bgMusic.play().catch(err => console.log("Autoplay error: ", err));
+
+            splashOverlay.style.opacity = '0';
+            setTimeout(() => {
+                splashOverlay.style.visibility = 'hidden';
+            }, 500);
+        });
+
+        // --- RETRO PIXEL ART DUST PARTICLE SYSTEM ---
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        const particles = [];
+        const maxParticles = 65; 
+        const colors = ['rgba(229, 188, 75, 0.45)', 'rgba(244, 236, 205, 0.4)', 'rgba(255, 82, 82, 0.35)'];
+
+        class DustParticle {
+            constructor() {
+                this.reset();
+                this.y = Math.random() * canvas.height; 
+            }
+
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = canvas.height + Math.random() * 40;
+                this.size = Math.floor(Math.random() * 5) + 4; 
+                this.speedY = -(Math.random() * 0.8 + 0.4); 
+                this.speedX = (Math.random() * 0.6 - 0.3); 
+                this.color = colors[Math.floor(Math.random() * colors.length)];
+            }
+
+            update() {
+                this.y += this.speedY;
+                this.x += this.speedX;
+
+                if (this.y < -15 || this.x < -15 || this.x > canvas.width + 15) {
+                    this.reset();
+                }
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.size, this.size);
+            }
+        }
+
+        for (let i = 0; i < maxParticles; i++) {
+            particles.push(new DustParticle());
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+            }
+            
+            requestAnimationFrame(animateParticles);
+        }
+        
+        animateParticles();
+    </script>
+</body>
+</html>
